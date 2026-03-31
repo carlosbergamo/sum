@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reservas SUM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+    .hidden { display: none !important; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.75s linear infinite; }
+
+    /* Entrada de card/vista */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+    .fade-up { animation: fadeUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+    /* Skeleton loading */
+    @keyframes shimmer {
+      from { background-position: -400px 0; }
+      to   { background-position:  400px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 8px;
+    }
+
+    /* Input focus ring */
+    input:focus, select:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+      border-color: #6366f1 !important;
+    }
+
+    /* Select custom arrow */
+    select { -webkit-appearance: none; appearance: none; }
+
+    /* Date input */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      cursor: pointer; opacity: 0.5;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+
+    /* Tab badge */
+    .badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 18px; height: 18px; padding: 0 5px;
+      border-radius: 99px; font-size: 10px; font-weight: 700; line-height: 1;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 antialiased">
+
+<!-- ══════════════════════════════════════════════════════════
+     VIEW: LOGIN
+══════════════════════════════════════════════════════════════ -->
+<div id="view-login" class="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50">
+  <div class="w-full max-w-sm fade-up">
+
+    <!-- Brand -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg shadow-indigo-200/60"
+           style="background: linear-gradient(135deg, #4f46e5, #6366f1)">
+        <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Reservas SUM</h1>
+      <p class="text-sm text-slate-500 mt-1.5">Ingresá con tus datos de inquilino</p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xl shadow-slate-200/40 p-6">
+      <!-- Alert -->
+      <div id="login-alert" class="hidden mb-4 text-sm rounded-xl px-4 py-3 flex items-start gap-2.5"></div>
+
+      <form id="login-form" novalidate>
+        <div class="mb-4">
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5" for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="tu@email.com" autocomplete="email"
+            class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm placeholder-slate-300 transition-colors" />
+        </div>
+        <div class="mb-5">
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5" for="login-password">Contraseña</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+            class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm placeholder-slate-300 transition-colors" />
+        </div>
+        <button type="submit" id="btn-login"
+          class="w-full flex items-center justify-center gap-2 text-white font-semibold py-2.5 rounded-xl transition-all text-sm shadow-md shadow-indigo-200/50 active:scale-[.98]"
+          style="background: linear-gradient(135deg, #4f46e5, #6366f1)">
+          Ingresar
+        </button>
+      </form>
+    </div>
+
+    <p class="text-center text-xs text-slate-400 mt-5">Sistema de gestión de reservas · SUM</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     VIEW: DASHBOARD
+══════════════════════════════════════════════════════════════ -->
+<div id="view-dashboard" class="hidden min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white/90 backdrop-blur-sm border-b border-slate-200/80 px-4 py-3 sticky top-0 z-20">
+    <div class="max-w-lg mx-auto flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+             style="background: linear-gradient(135deg, #4f46e5, #6366f1)">
+          <svg class="w-4.5 h-4.5 text-white w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <p class="font-semibold text-slate-900 text-sm leading-tight truncate" id="user-name">—</p>
+          <p class="text-xs text-slate-400 truncate" id="user-depto">—</p>
+        </div>
+      </div>
+      <button id="btn-logout"
+        class="flex-shrink-0 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 hover:border-slate-300 bg-white rounded-lg px-3 py-1.5 transition-all hover:shadow-sm active:scale-95">
+        Salir
+      </button>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="bg-white border-b border-slate-100 px-4 py-2.5">
+    <div class="max-w-lg mx-auto">
+      <div class="flex bg-slate-100 rounded-xl p-1 gap-1">
+        <button id="tab-btn-reservar"
+          class="flex-1 flex items-center justify-center gap-1.5 text-sm font-medium py-2 rounded-lg transition-all bg-white text-indigo-600 shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          Reservar
+        </button>
+        <button id="tab-btn-mis-reservas"
+          class="flex-1 flex items-center justify-center gap-1.5 text-sm font-medium py-2 rounded-lg transition-all text-slate-500">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Mis Reservas
+          <span id="reservas-badge" class="hidden badge bg-indigo-100 text-indigo-600">0</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <main class="flex-1 overflow-y-auto px-4 py-5">
+    <div class="max-w-lg mx-auto">
+
+      <!-- ── TAB: RESERVAR ──────────────────────────────── -->
+      <div id="tab-reservar">
+
+        <!-- Alert -->
+        <div id="reserva-alert" class="hidden mb-4 text-sm rounded-xl px-4 py-3 flex items-start gap-2.5"></div>
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <!-- Card header -->
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <svg class="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="font-semibold text-slate-800 text-sm">Nueva Reserva</p>
+              <p class="text-xs text-slate-400">Seleccioná fecha y turno disponible</p>
+            </div>
+          </div>
+
+          <form id="reserva-form" novalidate class="p-5 flex flex-col gap-4">
+
+            <!-- Edificio (read-only) -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Edificio</label>
+              <div class="flex items-center gap-2.5 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                <span id="form-edificio" class="font-medium text-slate-700">—</span>
+              </div>
+            </div>
+
+            <!-- Fecha -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5" for="reserva-fecha">
+                Fecha <span class="text-red-400 normal-case font-normal">*</span>
+              </label>
+              <input type="date" id="reserva-fecha"
+                class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm transition-colors" />
+            </div>
+
+            <!-- Turno -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5" for="reserva-turno">
+                Turno <span class="text-red-400 normal-case font-normal">*</span>
+              </label>
+              <div class="relative">
+                <select id="reserva-turno" disabled
+                  class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm transition-colors bg-white pr-10
+                         disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
+                  <option value="">— Primero seleccioná una fecha —</option>
+                  <option value="Mañana">🌅  Mañana</option>
+                  <option value="Noche">🌙  Noche</option>
+                </select>
+                <svg class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+              <!-- Estado disponibilidad -->
+              <div id="disp-status" class="hidden mt-2 flex items-center gap-2 text-xs font-medium">
+                <span id="disp-dot" class="w-2 h-2 rounded-full flex-shrink-0"></span>
+                <span id="disp-text"></span>
+              </div>
+            </div>
+
+            <button type="submit" id="btn-reservar"
+              class="w-full flex items-center justify-center gap-2 text-white font-semibold py-3 rounded-xl transition-all text-sm shadow-md shadow-indigo-200/50 active:scale-[.98] mt-1"
+              style="background: linear-gradient(135deg, #4f46e5, #6366f1)">
+              Confirmar Reserva
+            </button>
+          </form>
+        </div>
+
+        <!-- Advertencia tope de reservas -->
+        <div id="reservas-warning" class="hidden mt-3 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+          <p id="reservas-warning-text" class="text-xs text-amber-700 leading-relaxed font-medium"></p>
+        </div>
+
+        <!-- Reglas del edificio -->
+        <div id="reglas-card" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Reglas de tu edificio</p>
+          <ul id="reglas-text" class="flex flex-col gap-1 text-xs text-slate-600 leading-relaxed list-none"></ul>
+        </div>
+      </div>
+
+      <!-- ── TAB: MIS RESERVAS ──────────────────────────── -->
+      <div id="tab-mis-reservas" class="hidden">
+        <!-- Header con botón recargar -->
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Próximas reservas</p>
+          <button id="btn-reload-reservas"
+            class="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-all active:scale-95">
+            <svg id="reload-icon" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Actualizar
+          </button>
+        </div>
+        <div id="reservas-container"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast"
+  class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl text-sm font-semibold shadow-2xl z-50 text-white max-w-xs text-center">
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════════════════════
+//  ▼▼▼  ÚNICO VALOR QUE TENÉS QUE EDITAR  ▼▼▼
+// ═══════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzsyC1jcWIVp4m8fW3X9nf8EjNvmTCKgw89Qucs1vgoc5MTDQvbL825GpT-fvBOs1BU/exec';
+// ═══════════════════════════════════════════════════════════
+
+(function () {
+  'use strict';
+
+  // ── Estado ─────────────────────────────────────────────
+  let currentUser      = null;
+  let reservasCache    = [];
+  let loadingReservas  = false;
+
+  // ── Init ───────────────────────────────────────────────
+  function init() {
+    try {
+      const s = localStorage.getItem('sum_user');
+      if (s) { currentUser = JSON.parse(s); showDashboard(); }
+      else     showLogin();
+    } catch (_) { showLogin(); }
+    bindEvents();
+  }
+
+  // ── Vistas ─────────────────────────────────────────────
+  function showLogin() {
+    el('view-login').classList.remove('hidden');
+    el('view-dashboard').classList.add('hidden');
+  }
+
+  function showDashboard() {
+    el('view-login').classList.add('hidden');
+    el('view-dashboard').classList.remove('hidden');
+
+    el('user-name').textContent    = currentUser.nombre;
+    el('user-depto').textContent   = `Depto ${currentUser.depto} · ${currentUser.edificio}`;
+    el('form-edificio').textContent = currentUser.edificio;
+
+    // Mostrar info de frecuencia del edificio
+    loadFrecuenciaInfo();
+
+    // Fecha mínima = hoy
+    const today = new Date().toISOString().split('T')[0];
+    el('reserva-fecha').min   = today;
+    el('reserva-fecha').value = '';
+    resetTurnoSelect();
+    hideAlert('reserva-alert');
+
+    switchTab('reservar');
+  }
+
+  // ── Tabs ───────────────────────────────────────────────
+  function switchTab(tab) {
+    ['reservar', 'mis-reservas'].forEach(t => {
+      const btn     = el(`tab-btn-${t}`);
+      const content = el(`tab-${t}`);
+      const active  = t === tab;
+      btn.classList.toggle('bg-white',      active);
+      btn.classList.toggle('text-indigo-600', active);
+      btn.classList.toggle('shadow-sm',      active);
+      btn.classList.toggle('text-slate-500', !active);
+      content.classList.toggle('hidden', !active);
+    });
+    if (tab === 'mis-reservas') loadReservas();
+  }
+
+  // ── API: todas las llamadas usan POST ─────────────────
+  // ✅ FIX: Se usa POST para TODO — evita el bug de CORS
+  //    con redirecciones que tiene Apps Script en requests GET
+  //    desde dominios externos (ej. GitHub Pages).
+  async function api(payload) {
+    const resp = await fetch(APPS_SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain' }, // evita CORS preflight
+      body:    JSON.stringify(payload)
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const result = await resp.json();
+    return result;
+  }
+
+  // ── Config del edificio + reservas pendientes ─────────
+  // Llama a getConfig para:
+  //   1. Bloquear el date picker a la fecha máxima permitida
+  //   2. Mostrar las reglas del edificio en el formulario
+  // Llama a getReservas para actualizar el badge del tab.
+  async function loadFrecuenciaInfo() {
+    try {
+      // Cargar en paralelo
+      const [cfgRes, resRes] = await Promise.all([
+        api({ action: 'getConfig',   edificio: currentUser.edificio }),
+        api({ action: 'getReservas', email:    currentUser.email    })
+      ]);
+
+      // ── Aplicar config al formulario ──
+      if (cfgRes.success) {
+        const c = cfgRes.config;
+
+        // Bloquear fecha máxima en el date picker
+        el('reserva-fecha').max = c.maxFecha;
+
+        // Mostrar panel de reglas
+        const lines = [
+          `📆 Frecuencia: 1 reserva cada ${c.frecuenciaMeses * 30} días`,
+          `🔢 Máximo pendientes: ${c.maxReservas} reserva${c.maxReservas !== 1 ? 's' : ''}`,
+          `⏩ Hasta: ${c.mesesAnticipacion} mes${c.mesesAnticipacion !== 1 ? 'es' : ''} de anticipación (fecha límite: ${fmtFechaShort(c.maxFecha)})`
+        ];
+        el('reglas-text').innerHTML = lines.map(l => `<li>${l}</li>`).join('');
+        el('reglas-card').classList.remove('hidden');
+      }
+
+      // ── Actualizar badge ──
+      if (resRes.success) {
+        reservasCache = resRes.reservas;
+        updateBadge(reservasCache.length);
+
+        // Advertir si está cerca del tope de reservas
+        if (cfgRes.success) {
+          const pendientes  = resRes.reservas.length;
+          const maxReservas = cfgRes.config.maxReservas;
+          const warn        = el('reservas-warning');
+          if (pendientes >= maxReservas) {
+            el('reservas-warning-text').textContent = `⚠️ Llegaste al límite de ${maxReservas} reserva${maxReservas !== 1 ? 's' : ''} pendiente${maxReservas !== 1 ? 's' : ''}. Cancelá una para poder reservar.`;
+            warn.classList.remove('hidden');
+            el('btn-reservar').disabled = true;
+          } else if (pendientes === maxReservas - 1 && maxReservas > 1) {
+            el('reservas-warning-text').textContent = `ℹ️ Tenés ${pendientes} de ${maxReservas} reservas pendientes.`;
+            warn.classList.remove('hidden');
+            el('btn-reservar').disabled = false;
+          } else {
+            warn.classList.add('hidden');
+            el('btn-reservar').disabled = false;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  /** '2026-06-15' → '15/06/2026' */
+  function fmtFechaShort(s) {
+    if (!s) return '';
+    const [y, m, d] = s.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  // ── LOGIN ──────────────────────────────────────────────
+  async function handleLogin(e) {
+    e.preventDefault();
+    const email    = el('login-email').value.trim();
+    const password = el('login-password').value.trim();
+    if (!email || !password) { showAlert('login-alert', 'error', 'Completá tu email y contraseña.'); return; }
+
+    setLoading('btn-login', true, 'Verificando...');
+    hideAlert('login-alert');
+
+    try {
+      const res = await api({ action: 'login', email, password });
+      if (res.success) {
+        currentUser = res.user;
+        localStorage.setItem('sum_user', JSON.stringify(currentUser));
+        showDashboard();
+      } else {
+        showAlert('login-alert', 'error', res.error || 'No se pudo iniciar sesión.');
+      }
+    } catch (_) {
+      showAlert('login-alert', 'error', 'Error de conexión. Verificá tu internet e intentá de nuevo.');
+    } finally {
+      setLoading('btn-login', false, 'Ingresar');
+    }
+  }
+
+  // ── LOGOUT ─────────────────────────────────────────────
+  function handleLogout() {
+    localStorage.removeItem('sum_user');
+    currentUser = null;
+    reservasCache = [];
+    el('login-form').reset();
+    hideAlert('login-alert');
+    showLogin();
+  }
+
+  // ── DISPONIBILIDAD ─────────────────────────────────────
+  async function checkDisponibilidad(fecha) {
+    if (!fecha || !currentUser) return;
+
+    const turnoSel  = el('reserva-turno');
+    const dispStatus = el('disp-status');
+    const dispDot    = el('disp-dot');
+    const dispText   = el('disp-text');
+
+    turnoSel.disabled = true;
+    turnoSel.value    = '';
+    dispStatus.classList.remove('hidden');
+    dispDot.className  = 'w-2 h-2 rounded-full flex-shrink-0 bg-amber-400';
+    dispText.textContent = 'Verificando disponibilidad...';
+    dispText.className   = 'text-amber-600';
+
+    try {
+      // ✅ FIX: POST en lugar de GET (evita bug de CORS/redirect)
+      const res = await api({
+        action:   'getDisponibilidad',
+        edificio: currentUser.edificio,
+        fecha
+      });
+
+      if (!res.success) {
+        dispDot.className  = 'w-2 h-2 rounded-full flex-shrink-0 bg-slate-400';
+        dispText.textContent = 'No se pudo verificar.';
+        dispText.className   = 'text-slate-500';
+        turnoSel.disabled = false;
+        return;
+      }
+
+      const { Mañana, Noche } = res.disponibilidad;
+      const opts = Array.from(turnoSel.options);
+
+      opts.forEach(opt => {
+        if (opt.value === 'Mañana') {
+          opt.disabled = !Mañana;
+          opt.text     = Mañana ? '🌅  Mañana'              : '🌅  Mañana  (no disponible)';
+        }
+        if (opt.value === 'Noche') {
+          opt.disabled = !Noche;
+          opt.text     = Noche  ? '🌙  Noche'               : '🌙  Noche  (no disponible)';
+        }
+      });
+
+      if (!Mañana && !Noche) {
+        dispDot.className    = 'w-2 h-2 rounded-full flex-shrink-0 bg-red-400';
+        dispText.textContent  = 'Sin disponibilidad para esta fecha.';
+        dispText.className    = 'text-red-500';
+        turnoSel.disabled     = true;
+      } else {
+        const libre = [Mañana && 'Mañana', Noche && 'Noche'].filter(Boolean);
+        dispDot.className    = 'w-2 h-2 rounded-full flex-shrink-0 bg-green-400';
+        dispText.textContent  = `Disponible: ${libre.join(' y ')}.`;
+        dispText.className    = 'text-green-600';
+        turnoSel.value        = libre[0];
+        turnoSel.disabled     = false;
+      }
+
+    } catch (_) {
+      dispStatus.classList.add('hidden');
+      turnoSel.disabled = false;
+    }
+  }
+
+  // ── RESERVAR ───────────────────────────────────────────
+  async function handleReservar(e) {
+    e.preventDefault();
+    const fecha = el('reserva-fecha').value;
+    const turno = el('reserva-turno').value;
+
+    if (!fecha) { showAlert('reserva-alert', 'error', 'Seleccioná una fecha.');  return; }
+    if (!turno) { showAlert('reserva-alert', 'error', 'Seleccioná un turno válido.'); return; }
+
+    setLoading('btn-reservar', true, 'Confirmando...');
+    hideAlert('reserva-alert');
+
+    try {
+      const res = await api({
+        action:   'reservar',
+        email:    currentUser.email,
+        edificio: currentUser.edificio,
+        depto:    currentUser.depto,
+        nombre:   currentUser.nombre,
+        fecha,
+        turno
+      });
+
+      if (res.success) {
+        showAlert('reserva-alert', 'success', res.message);
+        el('reserva-form').reset();
+        el('reserva-fecha').min = new Date().toISOString().split('T')[0];
+        resetTurnoSelect();
+        // Actualizar caché y badge
+        loadFrecuenciaInfo();
+      } else {
+        showAlert('reserva-alert', 'error', res.error || 'No se pudo confirmar la reserva.');
+      }
+    } catch (_) {
+      showAlert('reserva-alert', 'error', 'Error de conexión. Intentá de nuevo.');
+    } finally {
+      setLoading('btn-reservar', false, 'Confirmar Reserva');
+    }
+  }
+
+  // ── CARGAR RESERVAS ────────────────────────────────────
+  async function loadReservas() {
+    if (loadingReservas) return;
+    loadingReservas = true;
+
+    const container = el('reservas-container');
+    const reloadIcon = el('reload-icon');
+    reloadIcon.classList.add('spin');
+
+    // Skeleton loading
+    container.innerHTML = `
+      <div class="flex flex-col gap-3">
+        ${[1,2].map(() => `
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3">
+            <div class="skeleton w-12 h-12 rounded-xl flex-shrink-0"></div>
+            <div class="flex-1 space-y-2">
+              <div class="skeleton h-4 w-3/4 rounded"></div>
+              <div class="skeleton h-3 w-1/2 rounded"></div>
+              <div class="skeleton h-3 w-1/3 rounded"></div>
+            </div>
+            <div class="skeleton w-20 h-8 rounded-xl flex-shrink-0"></div>
+          </div>`).join('')}
+      </div>`;
+
+    try {
+      // ✅ FIX: POST en lugar de GET
+      const res = await api({ action: 'getReservas', email: currentUser.email });
+
+      if (!res.success) {
+        container.innerHTML = buildErrorState(res.error || 'No se pudieron cargar las reservas.');
+        return;
+      }
+
+      reservasCache = res.reservas;
+      updateBadge(reservasCache.length);
+
+      if (reservasCache.length === 0) {
+        container.innerHTML = buildEmptyState();
+      } else {
+        container.innerHTML = `<div class="flex flex-col gap-3 fade-up">
+          ${reservasCache.map(buildReservaCard).join('')}
+        </div>`;
+        // Bind cancel buttons
+        container.querySelectorAll('.btn-cancelar').forEach(btn =>
+          btn.addEventListener('click', () => handleCancelar(btn.dataset.id, btn))
+        );
+      }
+
+    } catch (_) {
+      container.innerHTML = buildErrorState('Error de conexión al cargar las reservas.');
+    } finally {
+      loadingReservas = false;
+      reloadIcon.classList.remove('spin');
+    }
+  }
+
+  // ── Construir card de reserva ──────────────────────────
+  function buildReservaCard(r) {
+    const [year, month, day] = r.fecha.split('-');
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const fechaDisplay = `${parseInt(day)} de ${meses[parseInt(month)-1]} de ${year}`;
+
+    // Calcular días restantes
+    const hoy  = new Date(); hoy.setHours(0,0,0,0);
+    const diff = Math.ceil((new Date(r.fecha + 'T12:00:00') - hoy) / 86400000);
+    const diasLabel = diff === 0 ? '¡Hoy!' : diff === 1 ? 'Mañana' : `En ${diff} días`;
+    const diasColor = diff === 0 ? 'text-green-600 bg-green-50' : diff === 1 ? 'text-amber-600 bg-amber-50' : 'text-slate-500 bg-slate-100';
+
+    const turnoIcon  = r.turno === 'Mañana' ? '🌅' : '🌙';
+    const canCancel  = diff > 2; // más de 48 hs
+
+    return `
+      <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow" id="card-${r.id}">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <!-- Fecha compacta -->
+            <div class="flex-shrink-0 w-12 text-center bg-indigo-50 rounded-xl py-1.5 px-1">
+              <p class="text-xs font-semibold text-indigo-400 uppercase leading-none">${meses[parseInt(month)-1]}</p>
+              <p class="text-xl font-bold text-indigo-700 leading-tight">${parseInt(day)}</p>
+            </div>
+            <div class="min-w-0 pt-0.5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-semibold text-slate-800 text-sm">${turnoIcon} ${r.turno}</span>
+                <span class="text-xs font-medium px-2 py-0.5 rounded-full ${diasColor}">${diasLabel}</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">${r.edificio} · Depto ${r.depto}</p>
+              <p class="text-xs text-slate-400 mt-0.5 font-mono">${r.id}</p>
+            </div>
+          </div>
+          <!-- Botón cancelar -->
+          ${canCancel ? `
+            <button class="btn-cancelar flex-shrink-0 text-xs font-medium text-red-500 hover:text-red-600
+              border border-red-200 hover:border-red-300 hover:bg-red-50 rounded-xl px-3 py-1.5 transition-all active:scale-95"
+              data-id="${r.id}">
+              Cancelar
+            </button>` : `
+            <span class="flex-shrink-0 text-xs text-slate-400 bg-slate-100 rounded-xl px-3 py-1.5">
+              &lt; 48 hs
+            </span>`}
+        </div>
+      </div>`;
+  }
+
+  function buildEmptyState() {
+    return `<div class="text-center py-14 fade-up">
+      <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <svg class="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <p class="font-semibold text-slate-600 text-sm">Sin reservas próximas</p>
+      <p class="text-xs text-slate-400 mt-1.5 max-w-xs mx-auto leading-relaxed">
+        Todavía no tenés reservas confirmadas.<br>Usá la pestaña <strong>Reservar</strong> para hacer tu primera.
+      </p>
+    </div>`;
+  }
+
+  function buildErrorState(msg) {
+    return `<div class="text-center py-10 fade-up">
+      <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-3">
+        <svg class="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <p class="text-sm font-medium text-red-500">${msg}</p>
+      <button onclick="document.getElementById('btn-reload-reservas').click()"
+        class="mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+        Intentar nuevamente →
+      </button>
+    </div>`;
+  }
+
+  // ── CANCELAR ───────────────────────────────────────────
+  async function handleCancelar(idReserva, btn) {
+    if (!confirm('¿Cancelar esta reserva?\nEsta acción no se puede deshacer.')) return;
+
+    const originalHTML = btn.innerHTML;
+    btn.disabled   = true;
+    btn.innerHTML  = '<span class="w-3 h-3 border border-red-400 border-t-transparent rounded-full spin inline-block"></span>';
+
+    try {
+      const res = await api({ action: 'cancelar', idReserva, email: currentUser.email });
+
+      if (res.success) {
+        const card = el(`card-${idReserva}`);
+        if (card) {
+          card.style.cssText = 'transition: opacity .3s, transform .3s; opacity:0; transform:scale(.97)';
+          setTimeout(() => { card.remove(); updateBadge(--reservasCache.length); }, 320);
+        }
+        showToast('✓ Reserva cancelada.', 'success');
+        loadFrecuenciaInfo();
+      } else {
+        showToast(res.error || 'No se pudo cancelar.', 'error');
+        btn.innerHTML = originalHTML;
+        btn.disabled  = false;
+      }
+    } catch (_) {
+      showToast('Error de conexión. Intentá de nuevo.', 'error');
+      btn.innerHTML = originalHTML;
+      btn.disabled  = false;
+    }
+  }
+
+  // ── UI Helpers ─────────────────────────────────────────
+  function el(id) { return document.getElementById(id); }
+
+  function setLoading(btnId, loading, text) {
+    const btn = el(btnId);
+    btn.disabled  = loading;
+    btn.innerHTML = loading
+      ? `<span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full spin inline-block mr-1.5"></span>${text}`
+      : text;
+  }
+
+  function showAlert(id, type, msg) {
+    const div  = el(id);
+    const icon = type === 'error'
+      ? `<svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`
+      : `<svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+    div.innerHTML = icon + `<span>${msg}</span>`;
+    div.className = `text-sm rounded-xl px-4 py-3 flex items-start gap-2.5 fade-up ${
+      type === 'error'
+        ? 'bg-red-50 text-red-700 border border-red-200'
+        : 'bg-green-50 text-green-700 border border-green-200'
+    }`;
+    div.classList.remove('hidden');
+  }
+
+  function hideAlert(id) {
+    const div = el(id);
+    if (div) div.classList.add('hidden');
+  }
+
+  function showToast(msg, type) {
+    const t = el('toast');
+    t.textContent = msg;
+    t.className   = `fixed bottom-5 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl text-sm
+      font-semibold shadow-2xl z-50 text-white max-w-xs text-center transition-all ${
+      type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+    }`;
+    t.classList.remove('hidden');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.add('hidden'), 3500);
+  }
+
+  function resetTurnoSelect() {
+    const sel = el('reserva-turno');
+    sel.disabled = true;
+    sel.value    = '';
+    Array.from(sel.options).forEach(opt => {
+      opt.disabled = false;
+      if (opt.value === 'Mañana') opt.text = '🌅  Mañana';
+      if (opt.value === 'Noche')  opt.text = '🌙  Noche';
+      if (opt.value === '')       opt.text = '— Primero seleccioná una fecha —';
+    });
+    el('disp-status').classList.add('hidden');
+  }
+
+  function updateBadge(count) {
+    const badge = el('reservas-badge');
+    if (count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  // ── Bind Events ────────────────────────────────────────
+  function bindEvents() {
+    el('login-form').addEventListener('submit',   handleLogin);
+    el('reserva-form').addEventListener('submit', handleReservar);
+    el('btn-logout').addEventListener('click',    handleLogout);
+
+    el('tab-btn-reservar').addEventListener('click',     () => switchTab('reservar'));
+    el('tab-btn-mis-reservas').addEventListener('click', () => switchTab('mis-reservas'));
+
+    el('reserva-fecha').addEventListener('change', e => {
+      resetTurnoSelect();
+      if (e.target.value) checkDisponibilidad(e.target.value);
+    });
+
+    el('btn-reload-reservas').addEventListener('click', () => {
+      reservasCache = [];
+      loadReservas();
+    });
+
+    // Limpiar alertas al tipear
+    ['login-email','login-password'].forEach(id =>
+      el(id).addEventListener('input', () => hideAlert('login-alert'))
+    );
+  }
+
+  // ── Start ──────────────────────────────────────────────
+  docum
